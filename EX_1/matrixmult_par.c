@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+// for timer
+#include <time.h>
+#include <stdint.h> 
 
 // Die Dimensionen sind zwar fix am Übungszettel vorgegeben,
 // aber prinzipiell sollte man sie trotzdem im Programm nicht hart-coden.
@@ -9,11 +12,13 @@
 
 // since we working with square matricis. we only need one dimension
 // size of matrix is the dimension squared
-# define DIMENSION          10
+# define DIMENSION          36
 // task per thread is as its name suggests
 // if we set this to 1, each thread will calculate single cell in the result matrix
 // if we set it to 0, I plan to make it a blocking task(no threads created)
-# define TASKS_PER_THREAD   29
+# define TASKS_PER_THREAD   162
+// for testing purposes only
+#define TEST_COUNT 100
 // below is original code
 // Makro, welches einen 2-dimensionalen Index in einem 1-dimensionalen Index umwandelt
 // x .. x-Index (Anzahl der Zeilen)
@@ -33,17 +38,32 @@ typedef struct {
 	int y;
 } thread_data_t;
 
+// gets a time stamp in microseconds
+uint64_t get_timestamp() {
+    struct timespec ts;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+    return (uint64_t)(ts.tv_sec * 1000000 + ts.tv_nsec / 1000);
+}
+    /*
+double get_timestamp() {
+	struct timespec time;
+	clock_gettime(CLOCK_REALTIME, &time);
+	return (double)time.tv_sec + (double)time.tv_nsec/1000000000.0;
+}*/
+
 // Funktion, welche von den Threads ausgeführt wird
 void* thread_func(void* arg) {
-	// Caste übergebene Daten zum richtigen Datentyp
-	thread_data_t* data = (thread_data_t*)arg;
-	// Bereche Zeile * Spalte
-	int result = 0;
-	for (int i = 0; i < DIMENSION; i++) {
-		result += A[MATINDEX(data->x,i)] * B[MATINDEX(i,data->y)];
-	}
-	// Speichere Ergebnis in die richtige Zelle der C Matrix
-	C[MATINDEX(data->x,data->y)] = result;
+	for(int i = 0; i < 100; i++){
+        // Caste übergebene Daten zum richtigen Datentyp
+        thread_data_t* data = (thread_data_t*)arg;
+        // Bereche Zeile * Spalte
+        int result = 0;
+        for (int i = 0; i < DIMENSION; i++) {
+            result += A[MATINDEX(data->x,i)] * B[MATINDEX(i,data->y)];
+        }
+        // Speichere Ergebnis in die richtige Zelle der C Matrix
+        C[MATINDEX(data->x,data->y)] = result;
+    }
 	return NULL;
 }
 // calculates number of threads to create 
@@ -155,36 +175,46 @@ int main() {
 	// Definiere Thread-Handles und Thread-Eingabedaten
 	thread_data_t threadData[size];
 	pthread_t threads[thread_count];
-
-	// Erzeuge einen Thread für jedes Zeilen-Spalten-Paar
-	for (int x = 0; x < DIMENSION; x++) {
-		for (int y = 0; y < DIMENSION; y++) {
-			// Fülle Thread-Datenstruktur
-			thread_data_t* data = &threadData[MATINDEX(x,y)];
-			data->x = x;
-			data->y = y;
-			// Erzeuge Thread
+    // testing cases
+    uint64_t total_time = 0;
+    for(int t = 0; t < TEST_COUNT; t++){
+        uint64_t start = get_timestamp();
+        // Erzeuge einen Thread für jedes Zeilen-Spalten-Paar
+        for (int x = 0; x < DIMENSION; x++) {
+            for (int y = 0; y < DIMENSION; y++) {
+                // Fülle Thread-Datenstruktur
+                thread_data_t* data = &threadData[MATINDEX(x,y)];
+                data->x = x;
+                data->y = y;
+                // Erzeuge Thread
+                // and make sure there are no surprises
+                if(pthread_create(&threads[getThreadIndex(x,y, TASKS_PER_THREAD, DIMENSION)/*THREAD_INDEX(x,y)*/], NULL, thread_func, data)!= 0){
+                    fprintf(stderr,"Error creating thread number for coordinated (%d, %d)", x,y);
+                    clean_up_matrices();
+                    return 1;
+                }
+            }
+        }
+        // Warte bis alle Threads fertig sind
+        for (int i = 0; i < thread_count; i++) {
             // and make sure there are no surprises
-			if(pthread_create(&threads[getThreadIndex(x,y, TASKS_PER_THREAD, DIMENSION)/*THREAD_INDEX(x,y)*/], NULL, thread_func, data)!= 0){
-                fprintf(stderr,"Error creating thread number for coordinated (%d, %d)", x,y);
+            if(pthread_join(threads[i], NULL) != 0){
+                fprintf(stderr,"Error joining thread number %d", i);
                 clean_up_matrices();
                 return 1;
             }
-		}
-	}
-
-	// Warte bis alle Threads fertig sind
-	for (int i = 0; i < thread_count; i++) {
-        // and make sure there are no surprises
-		if(pthread_join(threads[i], NULL) != 0){
-            fprintf(stderr,"Error joining thread number %d", i);
-            clean_up_matrices();
-            return 1;
         }
-	}
+
+        uint64_t end = get_timestamp();
+        total_time+= (end - start);
+    }
+    uint64_t average = (total_time / TEST_COUNT);
+
+    printf("average time for %d cores = %ld\n",thread_count,average);
+    
 
 	// Gebe Ergebnis aus
-	printMatrix(C);
+	//printMatrix(C);
 
 	return 0;
 }

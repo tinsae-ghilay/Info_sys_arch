@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+// for timer
+#include <time.h>
+#include <stdint.h> 
 
 // Die Dimensionen sind zwar fix am Übungszettel vorgegeben,
 // aber prinzipiell sollte man sie trotzdem im Programm nicht hart-coden.
@@ -9,7 +12,7 @@
 
 // since we working with square matricis. we only need one dimension
 // size of matrix is the dimension squared
-# define DIMENSION          10
+# define DIMENSION          24
 // below is original code
 // Makro, welches einen 2-dimensionalen Index in einem 1-dimensionalen Index umwandelt
 // x .. x-Index (Anzahl der Zeilen)
@@ -17,10 +20,19 @@
 // s .. Größe der y-Dimension (Max. Anzahl der Spalten)
 #define MATINDEX(x,y)		((x)*(DIMENSION)+(y))
 
+// for testing purposes only
+#define TEST_COUNT 500
+
 // Die Matrizen A, B und C
 // Diese als globale Variablen zu definieren, macht es für die Threads einfacher, darauf zuzugreifen
 int *A, *B, *C;
 
+// gets a time stamp in microseconds
+uint64_t get_timestamp() {
+    struct timespec ts;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+    return (uint64_t)(ts.tv_sec * 1000000 + ts.tv_nsec / 1000);
+}
 
 // Funktion, welche von den Threads ausgeführt wird
 int calculate_cell(int x, int y) {
@@ -109,15 +121,25 @@ int main() {
 	for (int i = 0; i < size; i++) {
 		B[i] = rand() % 10;
 	}
-    // calculate the product matrix in a blocking
-	for (int x = 0; x < DIMENSION; x++) {
-		for (int y = 0; y < DIMENSION; y++) {
-            C[MATINDEX(x,y)] = calculate_cell(x,y);
+    // testing cases
+    uint64_t total_time = 0;
+    for(int t = 0; t < TEST_COUNT; t++){
+        uint64_t start = get_timestamp();
+        // calculate the product matrix in a blocking
+        for (int x = 0; x < DIMENSION; x++) {
+            for (int y = 0; y < DIMENSION; y++) {
+                C[MATINDEX(x,y)] = calculate_cell(x,y);
 
-		}
-	}
+            }
+        }
+        uint64_t end = get_timestamp();
+        total_time+= (end - start);
+        printf("total time = %ld\n", total_time);
+    }
+    uint64_t average = total_time / TEST_COUNT;
+    printf("average time for 4 cores = %ld\n",average);
 	// Gebe Ergebnis aus
-	printMatrix(C);
+	//printMatrix(C);
 
 	return 0;
 }
