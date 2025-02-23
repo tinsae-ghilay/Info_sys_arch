@@ -109,7 +109,7 @@ int main() {
 	for (int i = 0; i < size; i++) {
 		B[i] = rand() % 10;
 	}
-    // calculate the product matrix in a blocking loop
+    // calculate the product matrix in a blocking
 	for (int x = 0; x < DIMENSION; x++) {
 		for (int y = 0; y < DIMENSION; y++) {
             C[MATINDEX(x,y)] = calculate_cell(x,y);
