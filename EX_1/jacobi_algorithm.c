@@ -17,7 +17,7 @@
 
 
 // How many threads should be used
-#define  THREAD_COUNT     5
+#define  THREAD_COUNT     1
 
 // The number of measurements used to calculate the average execution time
 #define  MEASUREMENTS     6
@@ -30,8 +30,8 @@
  * Attention: A matrix size of 25000 needs 25000*25000*8 Bytes (~5GB) of Memory. Make sure to not exceed the amount of memory in your system!
  */
 
-//#define  ITERATION_COUNT  20
-//#define  MATRIX_SIZE      25000
+#define  ITERATION_COUNT  20
+#define  MATRIX_SIZE      25000
 
 //#define  ITERATION_COUNT  500
 //#define  MATRIX_SIZE      5000
@@ -45,8 +45,8 @@
 //#define  ITERATION_COUNT  50000
 //#define  MATRIX_SIZE      500
 
-#define  ITERATION_COUNT  800000
-#define  MATRIX_SIZE      125
+//#define  ITERATION_COUNT  800000
+//#define  MATRIX_SIZE      125
 
 
 
