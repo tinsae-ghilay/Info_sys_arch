@@ -125,6 +125,10 @@ public abstract class MyMqttCallBack implements MqttCallback {
     }
 
     /**
+     * on message received, we call an inherited task() method
+     * which does a task depending on the inheriting object
+     * @see org.exercise_four.worker.Worker
+     * @see org.exercise_four.coordinator.Coordinator
      * @param s Topic
      * @param mqttMessage Message
      */
@@ -144,9 +148,5 @@ public abstract class MyMqttCallBack implements MqttCallback {
     @Override
     public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
             // what do I need her? nothing for the moment
-    }
-
-    public String[] split(String to_split){
-        return to_split.split(SEPARATOR);
     }
 }

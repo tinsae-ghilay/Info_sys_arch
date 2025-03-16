@@ -35,11 +35,11 @@ public class Coordinator  extends MyMqttCallBack {
     @Override
     protected boolean isExitMessage(MqttMessage msg, String topic) {
         // process message
-        String[] task_msg = split(msg.toString());
+        String[] task_msg = msg.toString().split(SEPARATOR);
         // if worker is trying to register, lets register it first
         if(task_msg[0].equalsIgnoreCase("worker")){
             workers.add(topic);
-            String worker_id = split(topic)[1];
+            String worker_id = topic.split("/")[1];;
             System.out.println(TAG+" : added worker with id \""+worker_id+"\" to registry");
             // it's not an exit message
             return false;
@@ -52,7 +52,7 @@ public class Coordinator  extends MyMqttCallBack {
         boolean receivedZero = task_msg[0].equals("0");
 
         if(receivedZero && workers.remove(topic)){
-            String worker_id = split(topic)[1];
+            String worker_id = topic.split("/")[1];
             System.out.println(TAG+" : Worker with id: \""+worker_id+"\" logged out");
         }
         if(!receivedZero){
@@ -74,7 +74,7 @@ public class Coordinator  extends MyMqttCallBack {
      */
     @Override
     public void task(MqttMessage msg, String topic) {
-        String[] task_msg = split(msg.toString());
+        String[] task_msg = msg.toString().split(SEPARATOR);
 
         try{
             // if we got hits from worker, add them to total hits
@@ -88,7 +88,7 @@ public class Coordinator  extends MyMqttCallBack {
             }
             int darts_to_throw = getDarts();
             // we send back a new task (darts) to that worker
-            String worker_id = split(topic)[1];
+            String worker_id = topic.split("/")[1];
             publish(String.valueOf(darts_to_throw), "worker/"+worker_id);
 
             //System.out.println("message received from "+task_msg[1]+" by "+TAG+" and can be redirected: Answer : "+new_msg);
