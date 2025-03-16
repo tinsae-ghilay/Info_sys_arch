@@ -7,19 +7,25 @@ import java.util.ArrayList;
 
 public class Coordinator  extends MyMqttCallBack {
 
-    private int total_darts = 1000235;
+    private int total_darts = 1000000;
     private int darts_thrown = 0;
     private int total_hits = 0;
+    // how big this is, determines how fine/coarse grained a parallelism can be
+    // depending on whether we have parallelism or not. we have to do it accordingly to minimise load imbalance
     private static final int darts_per_worker = 1000;
-    // darts passed to worker
-    private int immediate_darts = 0;
+    // list of workers that get registered here,
+    // program ends when we get an MqttMessage with 0 in it and this list is empty
+    // when a worker sends 0, that worker will be unregistered(removed from this list) and then this list will be checked.
     ArrayList<String> workers = new ArrayList<>();
-
 
     public Coordinator(String tag) {
         super(tag);
     }
 
+    @Override
+    protected void subscribe(String topic) {
+        super.subscribe(topic+"/+");
+    }
 
     // This method will be called by parent class (hollywood treatment)
     /**
@@ -27,60 +33,69 @@ public class Coordinator  extends MyMqttCallBack {
      * @return boolean
      */
     @Override
-    protected boolean isExitMessage(MqttMessage msg) {
-        // we are only sure that the darts were thrown, only after we received response from worker
-        // but I am not sure if this accounts for when we have multiple workers
-        // for that, we might also have to include that number in MqttMessage from worker
-        // but for the time being we increament thrown darts by the previously sent amount of darts
-        setDarts_thrown(immediate_darts);
-        String[] task_msg = splitMessage(msg);
+    protected boolean isExitMessage(MqttMessage msg, String topic) {
+        // process message
+        String[] task_msg = split(msg.toString());
+        // if worker is trying to register, lets register it first
+        if(task_msg[0].equalsIgnoreCase("worker")){
+            workers.add(topic);
+            String worker_id = split(topic)[1];
+            System.out.println(TAG+" : added worker with id \""+worker_id+"\" to registry");
+            // it's not an exit message
+            return false;
+        }
         //System.out.println("Coordinator received this message : "+task_msg[0]);
-        // if the message received from worker is 0,
-        // it means it's the final message from that worker
-        // so we remove it from the list
+        /* if the message received from worker is 0,
+         * it means it's the final message from that worker
+         * so we remove it from the list
+         */
         boolean receivedZero = task_msg[0].equals("0");
-        if(receivedZero && workers.remove(task_msg[1])){
-            System.out.println(getTAG()+" : Worker with id: \""+task_msg[1]+"\" logged out");
+
+        if(receivedZero && workers.remove(topic)){
+            String worker_id = split(topic)[1];
+            System.out.println(TAG+" : Worker with id: \""+worker_id+"\" logged out");
+        }
+        if(!receivedZero){
+            /* we are checking if response from worker is an exit message or not,
+             * It means we are sure that the worker has thrown the darts and has sent hits back
+             * and if worker is not logging out, it sends the hits along with thrown darts.
+             * so we add what we passed to worker as thrown.
+             */
+            setDarts_thrown(Integer.parseInt(task_msg[1]));
         }
         // if all workers have been removed, it means work is done
         // so coordinator can also close
-        return receivedZero && workers.isEmpty();
+        return workers.isEmpty();
     }
-
 
     // This method will be called by parent class (hollywood treatment)
     /**
      * @param msg : message that will be processed
      */
     @Override
-    public void task(MqttMessage msg) {
-        String[] task_msg = splitMessage(msg);
+    public void task(MqttMessage msg, String topic) {
+        String[] task_msg = split(msg.toString());
 
         try{
-            // if worker is trying to register, lets just add that worker
-            if(task_msg[0].equalsIgnoreCase("worker")){
-                workers.add(task_msg[1]);
-                int darts_to_throw = getDarts();
-                System.out.println(getTAG()+" : added worker with id \""+task_msg[1]+"\" to registry");
-                // and give it a task
-                MqttMessage new_msg = new MqttMessage(String.valueOf(darts_to_throw).getBytes());
-                publish(new_msg, "worker/"+task_msg[1]);
+            // if we got hits from worker, add them to total hits
+            if(!task_msg[0].equalsIgnoreCase("worker")){
+                int hits = Integer.parseInt(task_msg[0]);
+                total_hits+= hits;
+                //System.out.println(hits+"  Added to total hits!");
+            }
+            if(task_msg[0].equals("0")){
                 return;
             }
-
-            // let`s add hits obtained from worker to total hits
-            int hits = Integer.parseInt(task_msg[0]);
-            total_hits+= hits;
             int darts_to_throw = getDarts();
             // we send back a new task (darts) to that worker
-            MqttMessage new_msg = new MqttMessage(String.valueOf(darts_to_throw).getBytes());
-            publish(new_msg, "worker/"+task_msg[1]);
+            String worker_id = split(topic)[1];
+            publish(String.valueOf(darts_to_throw), "worker/"+worker_id);
 
-            //System.out.println("message received from "+task_msg[1]+" by "+getTAG()+" and can be redirected: Answer : "+new_msg);
+            //System.out.println("message received from "+task_msg[1]+" by "+TAG+" and can be redirected: Answer : "+new_msg);
 
         // we also have catch possible exceptions
         }catch(NumberFormatException | IndexOutOfBoundsException e){
-            System.err.println(getTAG()+" : Error doing task "+e.getMessage());
+            System.err.println(TAG+" : Error doing task "+e.getMessage());
             // we probably should disconnect and close here
             disconnect();
         }
@@ -91,15 +106,10 @@ public class Coordinator  extends MyMqttCallBack {
      */
     @Override
     public void finalise() {
-        super.finalise();
         // add final darts to total thrown darts
         double pi = 4.0 * ((double) total_hits / (darts_thrown));
         System.out.println("\tDarts thrown \t: "+darts_thrown);
         System.out.println("\tCalculated pi \t: "+pi);
-    }
-
-    private String[] splitMessage(MqttMessage msg){
-        return msg.toString().split(" ");
     }
 
     /**
@@ -107,9 +117,7 @@ public class Coordinator  extends MyMqttCallBack {
      * reduces darts assigned to worker from total darts
      * @return  int darts to be thrown
      */
-    // ideally, this may be better done synchronously
-    // because we may receive multiple requests at the same time if workers are many
-    synchronized private int getDarts(){
+    private int getDarts(){
         int darts = 0;
         if(total_darts >= darts_per_worker){
             total_darts-= darts_per_worker;
@@ -118,7 +126,6 @@ public class Coordinator  extends MyMqttCallBack {
             darts = total_darts;
             total_darts = 0;
         }
-        immediate_darts = darts;
         return darts;
     }
 
@@ -126,9 +133,9 @@ public class Coordinator  extends MyMqttCallBack {
      * sets total darts thrown, synchronised in case things get done in threads
      * @param thrown int number of darts thrown by a worker
      */
-    synchronized private void setDarts_thrown(int thrown){
+    private void setDarts_thrown(int thrown){
         darts_thrown+=thrown;
+        //System.out.println("Thrown darts incremented to : "+darts_thrown);
     }
-
 }
 

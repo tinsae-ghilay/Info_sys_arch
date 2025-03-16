@@ -1,6 +1,5 @@
 package org.exercise_four.worker;
 
-import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.exercise_four.mqqt.MyMqttCallBack;
 
@@ -9,20 +8,24 @@ import java.util.concurrent.ThreadLocalRandom;
 public class Worker extends MyMqttCallBack{
 
 
+    private final String BROADCAST_TOPIC;
     public Worker(String tag) {
+
         super(tag);
+        BROADCAST_TOPIC = "coordinator/"+ID;
     }
 
     /**
-     *
+     * @param topic String topic the worker subscribes
      */
     @Override
     protected void subscribe(String topic) {
         // workers subscribe with tag and ID
-        super.subscribe(topic+"/"+getId());
+        super.subscribe(topic+"/"+ID);
         // worker can register itself with coordinator here
-        // this helps us be able to send targeted message to specific worker objects
-        publish(new MqttMessage((getTAG()+" "+getId()).getBytes()), "coordinator");
+        // sending message payload like "worker"/ID helps us maintain track of workers lifecycle
+        // coordinator has to maintain a list of workers, to ensure that all workers have logged out before it does
+        publish(TAG+SEPARATOR+ID, BROADCAST_TOPIC);
     }
 
     /**
@@ -30,8 +33,12 @@ public class Worker extends MyMqttCallBack{
      * @return Boolean
      */
     @Override
-    protected boolean isExitMessage(MqttMessage msg) {
-        return msg.toString().equalsIgnoreCase("0");
+    protected boolean isExitMessage(MqttMessage msg, String topic) {
+        boolean received_zero = msg.toString().equals("0");
+        if(received_zero){
+            publish("0"+SEPARATOR+"0",BROADCAST_TOPIC);
+        }
+        return received_zero;
     }
 
     // calculate dart hits
@@ -39,11 +46,11 @@ public class Worker extends MyMqttCallBack{
     private int calculateHits(long darts) {
         int hits = 0;
         // random generator
-        ThreadLocalRandom rng = ThreadLocalRandom.current();
+        ThreadLocalRandom rand = ThreadLocalRandom.current();
         // simulate dart throw, by getting random coordinates
         for (int i = 0; i < darts; i++) {
-            double x = rng.nextDouble(-1.0, 1.0);
-            double y = rng.nextDouble(-1.0, 1.0);
+            double x = rand.nextDouble(-1.0, 1.0);
+            double y = rand.nextDouble(-1.0, 1.0);
 
             if (Math.hypot(x, y) <= 1) { // coordinates are within circle
                 hits++;
@@ -53,27 +60,16 @@ public class Worker extends MyMqttCallBack{
     }
 
     @Override
-    public void task( MqttMessage msg) {
+    public void task( MqttMessage msg, String topic) {
         try{
             int darts = Integer.parseInt(msg.toString());
             int hits = calculateHits(darts);
-            // we send id here to tell coordinator , where the message is coming from (PS: the encoding plays a role.)
-            MqttMessage new_msg = new MqttMessage((hits+" "+getId()).getBytes());
-            publish(new_msg,"coordinator");
+            // we send hits/darts (hits per darts) back to coordinator
+            publish(hits+SEPARATOR+darts, BROADCAST_TOPIC);
         }catch(NumberFormatException e){
             // we might need to close
-            System.err.println(getTAG()+ " : "+e.getMessage()+" -> "+ msg);
+            System.err.println(TAG+ " : "+e.getMessage()+" -> "+ msg);
         }
-    }
-
-    /**
-     *
-     */
-    @Override
-    public void finalise() {
-        super.finalise();
-        // worker should notify that it is closing
-        publish(new MqttMessage(("0 "+getId()).getBytes()),"coordinator");
     }
 
     @Override

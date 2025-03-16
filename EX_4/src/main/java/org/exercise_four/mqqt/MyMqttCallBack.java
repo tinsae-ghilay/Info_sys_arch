@@ -2,8 +2,6 @@ package org.exercise_four.mqqt;
 
 // Needed for client id generation
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
-
 // Needed for MQTT
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -15,27 +13,36 @@ import static java.lang.Thread.sleep;
 
 
 public abstract class MyMqttCallBack implements MqttCallback {
-    private final String TAG;
+    // TAG, String used as part of topic on identification of callback
+    protected final String TAG;
+    // url of mosquitto
     private final static  String url = "tcp://localhost:1883";
-    private final String id;
+    // pseudo unique ID
+    protected final String ID;
     // Client object needed for connecting to the MQTT broker
     private MqttClient client;
-
     // Flag that allows us to exit the application
     private boolean shutdownFlag = false;
+    // separator to split messages in to parts
+    protected final String SEPARATOR = "/";
 
     public MyMqttCallBack(String tag){
         this.TAG = tag;
-        this.id = UUID.randomUUID().toString();
+        this.ID = UUID.randomUUID().toString();
         try {
-            client = new MqttClient(url,id);
-            System.out.println(TAG+" started with Id : "+id);
+            client = new MqttClient(url,ID);
+            System.out.println(TAG+" started with Id : "+ID);
         } catch (MqttException e) {
             System.err.println(TAG+" : Error defining client -> "+e.getMessage());
         }
 
     }
 
+    /**
+     * calls connect() on client object
+     * sets this class(object) as clients callback
+     * subscribes to mqtt
+     */
     public void connect() {
         try{
             client.connect();
@@ -59,29 +66,32 @@ public abstract class MyMqttCallBack implements MqttCallback {
     };
 
 
+    // Template methods
     // boolean, if received message should trigger shutdown
-    protected abstract boolean isExitMessage(MqttMessage msg);
+    protected abstract boolean isExitMessage(MqttMessage msg,String topic);
     // what task will a subscriber do? workers work, coordinators coordinate.
-    protected abstract void task(MqttMessage msg);
+    protected abstract void task(MqttMessage msg, String topic);
 
     // task to be done before closing?
     protected void finalise(){
         System.out.println(TAG+" exiting:");
     }
+
     // disconnecting mqqt client and freeing resource
     public void disconnect(){
         try{
+            System.out.println(TAG+" exiting:");
             client.disconnect();
             client.close();
-            System.out.println(TAG+" : Disconnected!");
         }catch (MqttException e){
             System.err.println(TAG+" : Error disconnecting client -> "+e.getMessage());
         }
     }
 
     // publish a message for a topic
-    public void publish(MqttMessage msg, String topic){
+    public void publish(String message, String topic){
         try {
+            MqttMessage msg = new MqttMessage(message.getBytes());
             client.publish(topic,msg);
             //System.out.println(TAG+" : Published topic \""+msg+"\" to "+topic);
         } catch (MqttException e) {
@@ -92,7 +102,7 @@ public abstract class MyMqttCallBack implements MqttCallback {
     }
 
     // continuous loop.
-    public void init(){
+    public final void init(){
         while(!shutdownFlag){
             try{
                 sleep(500);
@@ -120,12 +130,11 @@ public abstract class MyMqttCallBack implements MqttCallback {
      */
     @Override
     public void messageArrived(String s, MqttMessage mqttMessage){
-        //System.out.println("Message received ");
-        if(isExitMessage(mqttMessage)){
+        if(isExitMessage(mqttMessage,s)){
             System.out.println(TAG+" : received an exit flag: exiting");
             this.shutdownFlag = true;
         }else{
-            task(mqttMessage);
+            task(mqttMessage, s);
         }
     }
 
@@ -137,12 +146,7 @@ public abstract class MyMqttCallBack implements MqttCallback {
             // what do I need her? nothing for the moment
     }
 
-
-    public String getTAG() {
-        return TAG;
-    }
-
-    public String getId() {
-        return id;
+    public String[] split(String to_split){
+        return to_split.split(SEPARATOR);
     }
 }
