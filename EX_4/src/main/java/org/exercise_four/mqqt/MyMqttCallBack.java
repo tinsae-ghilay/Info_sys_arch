@@ -147,6 +147,6 @@ public abstract class MyMqttCallBack implements MqttCallback {
      */
     @Override
     public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
-            // what do I need her? nothing for the moment
+            // what do I need here? nothing for the moment
     }
 }
