@@ -13,7 +13,7 @@ import static java.lang.Thread.sleep;
 
 
 public abstract class MyMqttCallBack implements MqttCallback {
-    // TAG, String used as part of topic on identification of callback
+    // TAG, String used as part of topic and identification of callback on logs
     protected final String TAG;
     // url of mosquitto
     private final static  String url = "tcp://localhost:1883";
