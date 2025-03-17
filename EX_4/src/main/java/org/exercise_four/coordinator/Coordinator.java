@@ -130,7 +130,6 @@ public class Coordinator  extends MyMqttCallBack {
     }
 
     /**
-     * sets total darts thrown, synchronised in case things get done in threads
      * @param thrown int number of darts thrown by a worker
      */
     private void setDarts_thrown(int thrown){
