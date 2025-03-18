@@ -5,7 +5,6 @@ import org.exercise_four.mqqt.MyMqttCallBack;
 
 import java.util.ArrayList;
 
-import static java.lang.Thread.dumpStack;
 import static java.lang.Thread.sleep;
 
 public class Coordinator  extends MyMqttCallBack {
@@ -104,14 +103,20 @@ public class Coordinator  extends MyMqttCallBack {
             // in this scenario, task tries to parse a String (Goodbye) to int, and a NumberFormatException occurs
             // we use this to clear workers and set shutdownFlag, so program closes gracefully.
             // pi will be correctly calculated, because any reduced dart will be accounted for only when there is a response.
+            // so if message payload is EXIT_FLAG, but some workers haven't signed off
+            // we just send EXIT_FLAG to coordinator, cc each worker.
             if(task_msg[0].equals(EXIT_FLAG) && !workers.isEmpty()){
+                // this flag is set here to prevent repeated logs won each signing off of zombie worker
+                // this way it only gets triggered once
                 if(!isCleaning){
                     System.err.println("some darts may be lost, because some workers failed to respond, unregistering orphaned workers ");
                     isCleaning = true;
                 }
+                // send EXIT_FLAG CC each zombie worker to coordinator
                 for(String worker: workers){
                     publish(EXIT_FLAG,worker);
                     try{
+                        // sleep to avoid complaints by callBack on too many publish calls.
                         sleep(100);
                     } catch (InterruptedException ex) {
                         System.err.println(TAG+" : interrupted sleep -> "+e.getMessage());
