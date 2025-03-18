@@ -26,6 +26,7 @@ public class Worker extends MyMqttCallBack{
         // sending message payload like "worker"/ID helps us maintain track of workers lifecycle
         // coordinator has to maintain a list of workers, to ensure that all workers have logged out before it does
         publish(TAG+SEPARATOR+ID, BROADCAST_TOPIC);
+
     }
 
     /**
@@ -34,11 +35,12 @@ public class Worker extends MyMqttCallBack{
      */
     @Override
     protected boolean isExitMessage(MqttMessage msg, String topic) {
-        boolean received_zero = msg.toString().equals("0");
-        if(received_zero){
-            publish("0"+SEPARATOR+"0",BROADCAST_TOPIC);
+        //
+        boolean should_exit = msg.toString().equals("0");
+        if(should_exit){ // received exit flag
+            publish(EXIT_FLAG,BROADCAST_TOPIC);
         }
-        return received_zero;
+        return should_exit;
     }
 
     // calculate dart hits
@@ -75,5 +77,11 @@ public class Worker extends MyMqttCallBack{
     @Override
     public void messageArrived(String s, MqttMessage mqttMessage) {
         super.messageArrived(s, mqttMessage);
+    }
+
+    @Override
+    protected void finalise() {
+        System.out.println("finalising");
+        super.finalise();
     }
 }

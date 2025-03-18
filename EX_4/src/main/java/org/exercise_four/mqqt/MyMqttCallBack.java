@@ -13,7 +13,7 @@ import static java.lang.Thread.sleep;
 
 
 public abstract class MyMqttCallBack implements MqttCallback {
-    // TAG, String used as part of topic on identification of callback
+    // TAG, String used as part of topic and identification of callback on logs
     protected final String TAG;
     // url of mosquitto
     private final static  String url = "tcp://localhost:1883";
@@ -24,7 +24,8 @@ public abstract class MyMqttCallBack implements MqttCallback {
     // Flag that allows us to exit the application
     private boolean shutdownFlag = false;
     // separator to split messages in to parts
-    protected final String SEPARATOR = "/";
+    public final String SEPARATOR = "/";
+    public static final String EXIT_FLAG = "Goodbye";
 
     public MyMqttCallBack(String tag){
         this.TAG = tag;
@@ -58,6 +59,7 @@ public abstract class MyMqttCallBack implements MqttCallback {
     // subscriber subscribes to a topic
     protected void subscribe(String topic){
         try{
+            // specific topic
             client.subscribe(topic);
             System.out.println(TAG+" : Subscribed for topic \""+topic+"\"");
         } catch (MqttException e) {
@@ -74,13 +76,12 @@ public abstract class MyMqttCallBack implements MqttCallback {
 
     // task to be done before closing?
     protected void finalise(){
-        System.out.println(TAG+" exiting:");
+        System.out.println(TAG+" : bye!!");
     }
 
     // disconnecting mqqt client and freeing resource
     public void disconnect(){
         try{
-            System.out.println(TAG+" exiting:");
             client.disconnect();
             client.close();
         }catch (MqttException e){
@@ -101,13 +102,14 @@ public abstract class MyMqttCallBack implements MqttCallback {
         }
     }
 
+
     // continuous loop.
     public final void init(){
         while(!shutdownFlag){
             try{
                 sleep(500);
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                System.err.println("Interrupted !!");
             }
         }
         finalise();
@@ -134,8 +136,8 @@ public abstract class MyMqttCallBack implements MqttCallback {
      */
     @Override
     public void messageArrived(String s, MqttMessage mqttMessage){
-        if(isExitMessage(mqttMessage,s)){
-            System.out.println(TAG+" : received an exit flag: exiting");
+        if(isExitMessage(mqttMessage,s) && !shutdownFlag){
+            System.out.print(TAG+" : received an exit flag: ");
             this.shutdownFlag = true;
         }else{
             task(mqttMessage, s);
@@ -149,4 +151,7 @@ public abstract class MyMqttCallBack implements MqttCallback {
     public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
             // what do I need her? nothing for the moment
     }
+
+
+
 }
