@@ -19,7 +19,6 @@ public abstract class CallBack implements MqttCallback {
     // Flag that allows us to exit the application
     private boolean shutdownFlag = false;
     // separator to split messages in to parts
-    public final String SEPARATOR = "/";
     public static final String EXIT_FLAG = "Goodbye";
 
     /**
@@ -57,6 +56,11 @@ public abstract class CallBack implements MqttCallback {
 
     // abstract methods , the hollywood treatments
     // subscriber subscribes to a topic
+
+    /**
+     *
+     * @param topic String Topic the client subscribes to
+     */
     protected void subscribe(String topic){
         try{
             // specific topic
@@ -69,17 +73,39 @@ public abstract class CallBack implements MqttCallback {
 
 
     // Template methods
-    // boolean, if received message should trigger shutdown
+
+    /**
+     * checks if message received is an end of task message
+     * @param msg MqttMessage
+     * @param topic String topic of the message
+     * @return boolean true if message contains EXIT_FLAG
+     */
     protected abstract boolean isExitMessage(MqttMessage msg,String topic);
-    // what task will a subscriber do? workers work, coordinators coordinate.
+
+    /**
+     * what task will a subscriber do? workers work, coordinators coordinate.
+     * @param msg MqttMessage for the client to work on
+     * @param topic topic of the message
+     */
     protected abstract void task(MqttMessage msg, String topic);
 
-    // task to be done before closing?
+    /**
+     * A worker may need to report events at a certain interval
+     * this job can be implemented here.
+     * example a temperature sensor can measure temperature every 5 minutes
+     * and report it to broker
+     */
+    protected abstract void report();
+    /**
+     * task to be done before closing?
+     */
     protected void finalise(){
         System.out.println(TAG+" : bye!!");
     }
 
-    // disconnecting mqqt client and freeing resource
+    /**
+     * disconnecting mqqt client and freeing resources
+     */
     public void disconnect(){
         try{
             if(client.isConnected()) {
@@ -91,7 +117,11 @@ public abstract class CallBack implements MqttCallback {
         }
     }
 
-    // publish a message for a topic
+    /**
+     * publish a message for a topic
+     * @param message String message to be encoded in to Mqtt Payload
+     * @param topic Topic the message is assigned to
+     */
     public void publish(String message, String topic){
         try {
             MqttMessage msg = new MqttMessage(message.getBytes());
@@ -105,18 +135,22 @@ public abstract class CallBack implements MqttCallback {
     }
 
 
-    // continuous loop.
+    /**
+     * continuous loop that runs until shutdown flag is set
+      */
     public final void init(){
 
         while(!shutdownFlag){
             try{
-                sleep(300);
-                // if worker, it has to do tasks in an interval
+                sleep(300); // typical reaction time for human beings
+                // if worker, it has to report every time
+                // there may be some extra delay added in report
                 report();
             } catch (InterruptedException e) {
                 System.err.println("Interrupted !!");
             }
         }
+        // check if there are final tasks to do
         finalise();
     }
 
@@ -151,16 +185,7 @@ public abstract class CallBack implements MqttCallback {
      * @param iMqttDeliveryToken : ahm!
      */
     @Override
-    public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
-        // lets see what we get here
-        /*System.out.print(TAG+" : delivery message -> ");
-        try {
-            System.out.println(iMqttDeliveryToken.getMessage());
-        } catch (MqttException e) {
-            System.out.println(e.getMessage());
-        }*/
-    }
+    public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {}
 
-    protected abstract void report();
 
 }
