@@ -24,7 +24,8 @@ public class Heizungsventil extends CallBack {
      */
     @Override
     protected boolean isExitMessage(MqttMessage msg, String topic) {
-
+        // Heizungsventil needs an exit message to close. it has no responsibility on others
+        // so it doesn't have to check anything else.
         return msg.toString().equalsIgnoreCase(EXIT_FLAG);
     }
 
@@ -56,16 +57,19 @@ public class Heizungsventil extends CallBack {
      *
      */
     @Override
+    // heizungsventil reports nothing in this case
     protected void report() {
     }
 
     @Override
+    // it gets message from coordinator. so, it has to subscribe to coordinator
     protected void subscribe(String topic) {
         String new_topic = "coordinator/#";
         super.subscribe(new_topic);
     }
 
     @Override
+    // finally when exiting. it hase to notify any program that may be listening.
     protected void finalise() {
         super.finalise();
         publish(EXIT_FLAG,BROADCAST_CHANNEL);

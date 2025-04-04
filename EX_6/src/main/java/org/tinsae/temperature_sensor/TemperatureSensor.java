@@ -22,6 +22,7 @@ public class TemperatureSensor extends CallBack {
     }
 
     @Override
+    // temperature sensor is a worker. hence it only needs to check if it received an exit message.
     protected boolean isExitMessage(MqttMessage msg, String topic) {
         return msg.toString().equalsIgnoreCase(EXIT_FLAG);
     }
