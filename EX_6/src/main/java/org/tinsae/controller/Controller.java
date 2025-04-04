@@ -22,13 +22,18 @@ public class Controller extends CallBack {
      * @return boolean
      */
     @Override
+
+    // controller is only interested in temperature sensor
+    // as it only responds to message received from it.
+    // and if it receives an exit message form it. it exits
     protected boolean isExitMessage(MqttMessage msg, String topic) {
         return msg.toString().equalsIgnoreCase(EXIT_FLAG);
     }
 
     @Override
+    // subscribe to temperature sensor
     protected void subscribe(String topic) {
-        String new_topic = "sensors/#";
+        String new_topic = "sensors/temperature/#";
         super.subscribe(new_topic);
     }
 
@@ -37,6 +42,8 @@ public class Controller extends CallBack {
      * @param topic topic
      */
     @Override
+    // controller has a task
+    // if it receives a temperature values, it has to pass command to ventil based on threshold.
     protected void task(MqttMessage msg, String topic) {
         String channel = topic.split("/")[1];
         try{
@@ -63,6 +70,7 @@ public class Controller extends CallBack {
      *
      */
     @Override
+    // controller has nothing to report to console. on an infinite loop
     protected void report() {
 
     }
