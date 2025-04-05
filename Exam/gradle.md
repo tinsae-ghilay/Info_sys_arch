@@ -63,7 +63,7 @@ tasks.register('sprinkler', Zip) {
 tasks.register('sirene', Zip) {
     from projectDir
     // include project specific dependencies
-    include 'src/main/java/org/tinsae/sprinkler/*'
+    include 'src/main/java/org/tinsae/sirene/*'
     include 'src/main/java/org/tinsae/callback/*'
     include '*.gradle'
     include 'gradlew'
