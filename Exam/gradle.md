@@ -71,7 +71,7 @@ tasks.register('sirene', Zip) {
     include 'gradle/**/*'
     exclude '.gradle'
     // give the file name here
-    archiveFileName = "Assignment-Datenrecorder.zip"
+    archiveFileName = "Assignment-Sirene.zip"
 }
 
 
