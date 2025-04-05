@@ -72,4 +72,11 @@ public class Controller extends CallBack {
         // nothing to report, only act when message is received
     }
 
+
+    @Override
+    protected void finalise() {
+        publish(EXIT_FLAG, BROADCAST_CHANNEL);
+        super.finalise();
+    }
+
 }

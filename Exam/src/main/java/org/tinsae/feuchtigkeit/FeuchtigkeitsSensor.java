@@ -73,4 +73,12 @@ public class FeuchtigkeitsSensor extends CallBack {
         String new_topic = "sectorA/controller/all";
         super.subscribe(new_topic);
     }
+
+    @Override
+    protected void finalise() {
+        System.out.println("sending exit message");
+        publish(EXIT_FLAG, BROADCAST_CHANNEL);
+        System.out.println("sent exit message");
+        super.finalise();
+    }
 }

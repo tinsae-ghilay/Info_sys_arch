@@ -66,4 +66,10 @@ public class Bewasserungssystem extends CallBack {
     public void setCommand(String command) {
         this.command = command;
     }
+
+    @Override
+    protected void finalise() {
+        publish(EXIT_FLAG, BROADCAST_CHANNEL);
+        super.finalise();
+    }
 }
