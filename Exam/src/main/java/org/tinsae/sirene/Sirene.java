@@ -42,7 +42,10 @@ public class Sirene extends CallBack {
             int humidity = Integer.parseInt(msg.toString());
             // we set command conditionally based on humidity in relation to threshold
             String status = humidity < threshold? "ALARM" : "OK";
-            setState(status);
+            if(!status.equalsIgnoreCase(state)){
+                setState(status);
+                System.out.println(TAG+" : siren state changed to -> "+status);
+            }
 
         } catch (NumberFormatException e) {
             System.err.println(TAG+" : Invalid humidity value received");
@@ -57,7 +60,7 @@ public class Sirene extends CallBack {
      */
     @Override
     protected void report() {
-        while(state.equalsIgnoreCase("WARNING")){
+        while(state != null && state.equalsIgnoreCase("ALARM")){
             System.err.println(TAG+" : WARNING !! Humidity too low. turn on sprinklers immediately");
             try{
                 sleep(500);

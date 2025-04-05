@@ -54,6 +54,7 @@ public class Controller extends CallBack {
             String command = humidity < threshold? "ON" : "OFF";
             // and publish command
             publish(command, BROADCAST_CHANNEL);
+            System.out.println(TAG+" : sent a command -> "+command);
         } catch (NumberFormatException e) {
             System.err.println(TAG+" : Invalid humidity value received");
         }
