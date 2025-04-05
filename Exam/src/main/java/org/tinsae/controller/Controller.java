@@ -75,7 +75,9 @@ public class Controller extends CallBack {
 
     @Override
     protected void finalise() {
+        System.out.println("sending exit message");
         publish(EXIT_FLAG, BROADCAST_CHANNEL);
+        System.out.println("sent exit message");
         super.finalise();
     }
 
