@@ -1,29 +1,21 @@
-package org.tinsae.controller;
+package org.tinsae.sprinkler;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.tinsae.callback.CallBack;
 
-public class Controller extends CallBack {
-
+public class Bewasserungssystem extends CallBack {
     private final String BROADCAST_CHANNEL;
-    private int threshold = 30;
+    private String command;
+
     /**
      * Constructor
      *
      * @param tag String used to identify the callback (coordinator , worker or any other name that we want to give it)
      *            we also use this to identify objects in debug print-outs
      */
-    public Controller(String tag) {
+    public Bewasserungssystem(String tag) {
         super(tag);
-        BROADCAST_CHANNEL = "sectorA/"+tag+"/command/"+ID;
-    }
-
-    @Override
-    protected void subscribe(String topic) {
-        // controller has to listen to feuchtigkeitssensor
-        // so we subscribe to it
-        String new_topic = "sectorA/sensors/#";
-        super.subscribe(new_topic);
+        BROADCAST_CHANNEL = "sectorA/"+TAG+"/ID";
     }
 
     /**
@@ -35,8 +27,7 @@ public class Controller extends CallBack {
      */
     @Override
     protected boolean isExitMessage(MqttMessage msg, String topic) {
-        // I plan to make this a cascading exit. so, if feuchtigkeit sensor receives an exit message
-        // all exit as well.
+        // again, I want to cascade this
         return msg.toString().equalsIgnoreCase(EXIT_FLAG);
     }
 
@@ -48,16 +39,11 @@ public class Controller extends CallBack {
      */
     @Override
     protected void task(MqttMessage msg, String topic) {
-        try{
-            int humidity = Integer.parseInt(msg.toString());
-            // we set command conditionally based on humidity in relation to threshold
-            String command = humidity < threshold? "ON" : "OFF";
-            // and publish command
-            publish(command, BROADCAST_CHANNEL);
-        } catch (NumberFormatException e) {
-            System.err.println(TAG+" : Invalid humidity value received");
+        String new_command = msg.toString();
+        if(!new_command.equalsIgnoreCase(command)){
+            System.out.println(TAG+" : set to "+new_command);
+            setCommand(new_command);
         }
-
     }
 
     /**
@@ -68,7 +54,16 @@ public class Controller extends CallBack {
      */
     @Override
     protected void report() {
-        // nothing to report, only act when message is received
+        // nothing to report here as well
     }
 
+    @Override
+    protected void subscribe(String topic) {
+        String new_topic = "sectorA/controller/command/+";
+        super.subscribe(new_topic);
+    }
+
+    public void setCommand(String command) {
+        this.command = command;
+    }
 }

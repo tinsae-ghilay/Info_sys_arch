@@ -18,7 +18,7 @@ public class FeuchtigkeitsSensor extends CallBack {
      */
     public FeuchtigkeitsSensor(String tag) {
         super(tag);
-        BROADCAST_CHANNEL = "sensors/"+tag+ID;
+        BROADCAST_CHANNEL = "sectorA/sensors/"+tag+ID;
     }
 
     /**
